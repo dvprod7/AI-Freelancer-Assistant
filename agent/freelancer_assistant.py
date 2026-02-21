@@ -92,29 +92,58 @@ def ask_model(profile_data):
 # PARSE JSON SAFELY
 # ==============================
 
+def fix_json_with_ai(bad_output):
+    fix_prompt = f"""
+        The following response should be valid JSON but is broken.
+
+        Fix it and return ONLY valid JSON.
+        Do not explain anything.
+
+        Broken response:
+        {bad_output}
+        """
+
+    response = requests.post(
+        OLLAMA_URL,
+        json={
+            "model": MODEL,
+            "prompt": fix_prompt,
+            "stream": False,
+            "options": {"temperature": 0}
+        }
+    )
+
+    data = response.json()
+    return data["response"]
+
 def parse_analysis(response_text):
     try:
-        # buscar primer { y último }
         start = response_text.find("{")
         end = response_text.rfind("}") + 1
-
-        if start == -1 or end == -1:
-            raise ValueError("No JSON detected")
-
         json_str = response_text[start:end]
 
         return json.loads(json_str)
 
-    except Exception as e:
-        print("⚠️ Error parsing JSON.")
-        print("Raw response:")
-        print(response_text)
+    except Exception:
+        print("⚠️ JSON broken — attempting self-heal...")
 
-        return {
-            "business_type": "Unknown",
-            "website_need": "Unknown",
-            "outreach_angle": "Parsing failed"
-        }
+        fixed = fix_json_with_ai(response_text)
+
+        try:
+            start = fixed.find("{")
+            end = fixed.rfind("}") + 1
+            json_str = fixed[start:end]
+
+            return json.loads(json_str)
+
+        except Exception:
+            print("❌ Self-heal failed.")
+
+            return {
+                "business_type": "Unknown",
+                "website_need": "Unknown",
+                "outreach_angle": "Failed after retry"
+            }
 
 
 # ==============================
