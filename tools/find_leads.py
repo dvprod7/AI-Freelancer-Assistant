@@ -27,19 +27,73 @@ def search_instagram_profiles(keyword):
     query = f"{keyword} instagram"
 
     with DDGS() as ddgs:
-        search_results = ddgs.text(query, max_results=15)
+        search_results = ddgs.text(query, max_results=20)
 
         for r in search_results:
             url = r.get("href", "")
+            title = r.get("title", "")
 
             if "instagram.com" in url:
                 username = extract_username(url)
 
                 if username:
-                    profile = f"{username} | negocio local | sin sitio web"
-                    results.append(profile)
+
+                    description_hint = clean_title(title)
+
+                    print(f"🔍 Checking website for {username}...")
+
+                    have_web = detect_website(username)
+                    
+                    print(f"FOUND PROFILE: {username} | website={have_web}")
+                    
+                    # SOLO leads sin web
+                    if have_web == "no website":
+                        profile = f"{username} | {description_hint} | {have_web}"
+                        results.append(profile)
+                    else:
+                        print(f"⛔ Skipped {username} (has website)")
 
     return results[:MAX_LEADS_PER_KEYWORD]
+
+def detect_website(username):
+    query = f'"{username}"'
+
+    with DDGS() as ddgs:
+        results = ddgs.text(query, max_results=5)
+
+        for r in results:
+            url = r.get("href", "")
+
+            # ignoramos redes sociales
+            if any(domain in url for domain in [
+                "instagram.com",
+                "facebook.com",
+                "tiktok.com",
+                "youtube.com",
+                "linkedin.com"
+            ]):
+                continue
+
+            # si encontramos dominio externo → tiene web
+            if "." in url:
+                return "has website"
+
+    return "no website"
+
+def clean_title(title):
+    title = title.lower()
+
+    # quitar texto típico de resultados IG
+    title = title.replace("• instagram photos and videos", "")
+    title = re.sub(r"\(@.*?\)", "", title)
+
+    # limpiar símbolos raros
+    title = re.sub(r"[^a-zA-Záéíóúñ0-9\s]", " ", title)
+
+    # espacios múltiples
+    title = re.sub(r"\s+", " ", title).strip()
+
+    return title
 
 
 # ==========================
