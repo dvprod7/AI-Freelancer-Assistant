@@ -1,3 +1,1 @@
-tarot.urbanoo | tienda de zapatos | sin sitio web
-ropa_medellin_02 | tienda de ropa | sin sitio web
-clothingmedellin | tienda de ropa | sin sitio web
+alualu.store | negocio local | sin sitio web
